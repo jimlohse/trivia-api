@@ -79,16 +79,8 @@ def create_app(test_config=None):
             abort(500)
         finally:
             selected_questions = paginate_questions(page_num, questions)
+            current_category = 1
 
-            ''' This code does nothing but set category to 1, revisit this! '''
-            current_category = None  # request.data['currentCategory']
-            # see if current category is set
-            if current_category:
-                current_category = int(current_category)
-            else:
-                current_category = 1
-
-            #
             category = Category.query.filter(Category.id == current_category).one_or_none()
             db_categories = Category.query.all()
 
@@ -96,12 +88,6 @@ def create_app(test_config=None):
             categories = {}
             for item in db_categories:
                 categories[item.id] = item.type
-
-            # what to do if there are no categories?
-
-            if category == None:
-                # need to handle the case where the category didn't exist
-                pass
 
             return jsonify({
                 'questions': selected_questions,
@@ -211,7 +197,20 @@ def create_app(test_config=None):
 
         # because the id is sent by the user clicking an existing category, we assume it exists
         questions = Question.query.filter(Question.category == id).all()
-        questions_list = [question.question for question in questions]
+
+        # apparently this is wrong, they want a list of dicts returned for 'questions', try below
+        # questions_list = [question.question for question in questions]
+
+        questions_list = []
+
+        for question in questions:
+            questions_list.append({
+                'id': question.id,
+                'question': question.question,
+                'answer': question.answer,
+                'category': question.category,
+                'difficulty': question.difficulty
+            })
 
         category = Category.query.filter(Category.id == id).one_or_none()
 
@@ -235,6 +234,51 @@ def create_app(test_config=None):
     one question at a time is displayed, the user is allowed to answer
     and shown whether they were correct or not. 
     '''
+    @app.route('/quizzes', methods=['POST'])
+    def get_quiz_questions():
+        json_data = request.get_json()
+
+        previous_questions = json_data['previous_questions']
+        category = json_data['quiz_category']
+        # need to add one to category, in the db they are 1-indexed, set category_id
+        category_id = int(category['id']) + 1
+
+        # look to find a question that hasn't been asked and return it as question_to_return
+        # if category type is 'click', we look at all categories / all questions
+        if category['type'] == 'click':
+            try:
+                questions = Question.query.order_by(Question.id).all()
+            except SQLAlchemyError:
+                abort(500)
+        # else if category is non-zero, we look at a specific category
+        else:
+            try:
+                questions = Question.query.filter(Question.category == category_id).order_by(Question.id).all()
+            except SQLAlchemyError:
+                abort(500)
+
+        question_to_return = None
+        for question in questions:
+            if question.id not in previous_questions:
+                question_to_return = question
+                break
+
+        # need to check if all the questions were used up and question_to_return is None
+        # if question_to_return is None:
+        if question_to_return is None:
+            question_dict = None
+        else:
+            question_dict = {
+                'id': question_to_return.id,
+                'question': question_to_return.question,
+                'answer': question_to_return.answer,
+                'difficulty': question_to_return.difficulty,
+                'category': question_to_return.category
+            }
+
+        return jsonify({
+            'question': question_dict
+        })
 
     '''
     @TODO: 
@@ -244,7 +288,7 @@ def create_app(test_config=None):
     '''
     
     '''
-    @app.errorhandler()
+    @app.errorhandler(404)
     def not_found(error):
         return jsonify({
             "success": False,
@@ -255,7 +299,7 @@ def create_app(test_config=None):
     '''
     
     '''
-    @app.errorhandler()
+    @app.errorhandler(422)
     def unprocessable(error):
         return jsonify({
             "success": False,
@@ -266,7 +310,7 @@ def create_app(test_config=None):
     '''
     
     '''
-    @app.errorhandler()
+    @app.errorhandler(500)
     def internal_error(error):
         return jsonify({
             "success": False,
