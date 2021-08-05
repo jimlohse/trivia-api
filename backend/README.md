@@ -1,4 +1,9 @@
-# Backend - Full Stack Trivia API 
+# Trivia API by James Lohse -- backend
+
+Based on Flask, SQLAlchemy and Werkzeug, this API connects to the React [frontend](../frontend) to allow players to play
+a Trivia game with questions stored in a Postgres database. The front end came largely completed by Udacity, so most of the work was in the init and models files. 
+
+**See the [API Docs](#APIDocs) after the installation instructions.**
 
 ### Installing Dependencies for the Backend
 
@@ -12,8 +17,10 @@
 ```bash
 pip install -r requirements.txt
 ```
-This will install all of the required packages we selected within the `requirements.txt` file.
+This will install all of the required packages from the `requirements.txt` file.
 
+>NOTE: If you already have some of the dependencies installed, use the `--system-site-packages` option
+> when you install your virtual environment and it will use the system packages. By default, creating a virtual environment ignores your system packages.
 
 4. **Key Dependencies**
  - [Flask](http://flask.pocoo.org/)  is a lightweight backend microservices framework. Flask is required to handle requests and responses.
@@ -42,45 +49,35 @@ flask run --reload
 
 The `--reload` flag will detect file changes and restart the server automatically.
 
-## Review Comment to the Students
-```
-This README is missing documentation of your endpoints. Below is an example for your endpoint to get all categories. Please use it as a reference for creating your documentation and resubmit your code. 
-
-Endpoints
-GET '/api/v1.0/categories'
-GET ...
-POST ...
-DELETE ...
-
-GET '/api/v1.0/categories'
-- Fetches a dictionary of categories in which the keys are the ids and the value is the corresponding string of the category
-- Request Arguments: None
-- Returns: An object with a single key, categories, that contains a object of id: category_string key:value pairs. 
-{'1' : "Science",
-'2' : "Art",
-'3' : "Geography",
-'4' : "History",
-'5' : "Entertainment",
-'6' : "Sports"}
-
+You can also set the `FLASK_ENV` environment variable to `development` to run debug mode:  
+```bash
+export FLASK_ENV=development
 ```
 
+## <a name="APIdocs">API Documentation</a>
+
+**Endpoints**
+
+Categories:
+```bash
+curl  -X GET 127.0.0.1:5000/categories
+```
 ```js
 GET '/categories'
-- Fetches a dictionary of categories in which the keys are the ids and the value is the corresponding string of the category
+- Returns a JSON-based list of categories, used by quiz pages that list categories
 - Request Arguments: None
-- Returns: An object with a single key, categories, that contains an object of id: category_string key:value pairs. 
-{
-    'categories': { '1' : "Science",
-    '2' : "Art",
-    '3' : "Geography",
-    '4' : "History",
-    '5' : "Entertainment",
-    '6' : "Sports" }
-}
-```
-
-
+- Returns: A dictionary with key categories containing a list of categories, see below.
+{  
+&nbsp;&nbsp;&nbsp;&nbsp;"categories":  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ "Science",  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"Art",  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"Geography",  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"History",  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"Entertainment",  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"Sports"]  
+}  
+````
+Paginated questions:
 ```js
 GET '/questions?page=${integer}'
 - Fetches a paginated set of questions, a total number of questions, all categories and current category string. 
@@ -106,7 +103,10 @@ GET '/questions?page=${integer}'
     'currentCategory': 'History'
 }
 ```
-
+Questions:
+```bash
+curl -H "Content-Type: application/json" -X GET 127.0.0.1:5000/categories/5/questions
+```
 ```js
 GET '/categories/${id}/questions'
 - Fetches questions for a cateogry specified by id request argument 
@@ -126,19 +126,22 @@ GET '/categories/${id}/questions'
     'currentCategory': 'History'
 }
 ```
-
+Delete a question:
+```bash
+curl  -X DELETE 127.0.0.1:5000/questions/39
+```
 ```js
 DELETE '/questions/${id}'
 - Deletes a specified question using the id of the question
 - Request Arguments: id - integer
 - Returns: Does not need to return anything besides the appropriate HTTP status code. Optionally can return the id of the question. If you are able to modify the frontend, you can have it remove the question using the id instead of refetching the questions. 
 ```
-
+Get another quiz question:
 ```js
 POST '/quizzes'
 - Sends a post request in order to get the next question 
 - Request Body: 
-{'previous_questions':  an array of question id's such as [1, 4, 20, 15]
+{'previous_questions':  an array of question ids such as [1, 4, 20, 15]
 'quiz_category': a string of the current category }
 - Returns: a single new question object 
 {
@@ -151,7 +154,7 @@ POST '/quizzes'
     }
 }
 ```
-
+Add a question:
 ```js
 POST '/add_question'
 - Sends a post request in order to add a new question
@@ -164,7 +167,7 @@ POST '/add_question'
 }
 - Returns: Does not return any new data
 ```
-
+Search questions:
 ```js
 POST '/questions'
 - Sends a post request in order to search for a specific question by search term 

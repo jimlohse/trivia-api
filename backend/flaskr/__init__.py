@@ -97,6 +97,7 @@ def create_app(test_config=None):
 
     @app.route('/add_question', methods=['POST'])
     def add_new_question():
+        ''' Adds a question using POST method.'''
         json_data = request.get_json()
 
         new_question = Question(
@@ -137,6 +138,12 @@ def create_app(test_config=None):
 
     @app.route('/questions', methods=['POST'])
     def search_questions():
+        ''' Performs a case-insensitive search of the questions for the search term.
+        Looks for anything that contains the search term, does not need exact match.
+
+        :return: Returns the questions that match the search term in a dict in JSON
+        also returns number of questions returned and category
+        '''
         json_data = request.get_json()
         search_term = '%' + json_data['searchTerm'] + '%'
 
@@ -164,8 +171,12 @@ def create_app(test_config=None):
 
     @app.route('/categories/<int:id>/questions', methods=['GET'])
     def get_questions_by_category(id):
-        # NOTE: we don't paginate questions when displayed by category
-        # because the id is sent by the user clicking an existing category, we assume it exists
+        ''' Questions are returned by category, for a given category. NOTE: we don't paginate
+        questions when displayed by category because the id is sent by the user clicking an
+        existing category, we assume it exists
+        :param id: The database id of the category to return questions for
+        :return: JSON of questions, total number of questions and category of questions
+        '''
         questions = Question.query.filter(Question.category == id).all()
 
         questions_list = []
@@ -191,6 +202,9 @@ def create_app(test_config=None):
 
     @app.route('/quizzes', methods=['POST'])
     def get_quiz_questions():
+        ''' Gets questions from given category and presents questions that haven't been asked yet.
+        If ALL is chosen, then request type is "click" and all questions are presented, one at a
+        time. Questions are randomized to be presented in a different order during each game.'''
         json_data = request.get_json()
 
         previous_questions = json_data['previous_questions']
@@ -240,29 +254,30 @@ def create_app(test_config=None):
 
     @app.errorhandler(werkzeug.exceptions.BadRequest)
     def handle_bad_request(e):
+        ''' Werkzeug 400 error handler for 400 errors -- usually these are bad routes. '''
         return 'bad request!', 400
 
     @app.errorhandler(404)
     def not_found(error):
+        ''' Handles 404 errors, indicating a route was chosen that doesn't match any routes'''
         return jsonify({
             "success": False,
             "error": 404,
-            "message": "unprocessable"
+            "message": "not found"
         }), 404
 
     @app.errorhandler(422)
     def unprocessable(error):
+        ''' Handles 422 errors, which are not currently thrown by any "try...except" clause. '''
         return jsonify({
             "success": False,
             "error": 422,
             "message": "unprocessable"
         }), 422
 
-    '''
-    
-    '''
     @app.errorhandler(500)
     def internal_error(error):
+        ''' Handles 500 errors, usually are database errors caught by except clause. '''
         return jsonify({
             "success": False,
             "error": 500,
