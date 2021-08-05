@@ -4,6 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import SQLAlchemyError
 from flask_cors import CORS
 import random
+import werkzeug
 
 from models import db, setup_db, Question, Category
 
@@ -29,6 +30,13 @@ def create_app(test_config=None):
         return response
 
     def paginate_questions(page, questions):
+        ''' Returns a selection of all questions that fit on one page
+
+        Keyword arguments:
+        :param page: the page number to return questions for
+        :param questions: all the questions, a selection of which is returned
+        :return: current list of questions
+        '''
         # page = request.args.get('page', 1, type=int)
         start = (page - 1) * QUESTIONS_PER_PAGE
         end = start + QUESTIONS_PER_PAGE
@@ -38,13 +46,12 @@ def create_app(test_config=None):
 
         return current_questions
 
-    '''
-    @TODO: 
-    Create an endpoint to handle GET requests 
-    for all available categories.
-    '''
     @app.route('/categories', methods=['GET'])
     def get_categories():
+        ''' Returns a JSON-based list of categories, used by quiz pages that list categories
+
+        :return: JSON list of categories
+        '''
         try:
             categories = Category.query.all()
         except SQLAlchemyError:
@@ -57,20 +64,12 @@ def create_app(test_config=None):
                 'categories': categories_list
             })
 
-    '''
-    @TODO: 
-    Create an endpoint to handle GET requests for questions, 
-    including pagination (every 10 questions). 
-    This endpoint should return a list of questions, 
-    number of total questions, current category, categories. 
-
-    TEST: At this point, when you start the application
-    you should see questions and categories generated,
-    ten questions per page and pagination at the bottom of the screen for three pages.
-    Clicking on the page numbers should update the questions. 
-    '''
     @app.route('/questions', methods=['GET'])
     def get_questions():
+        ''' Gets the questions for a specific page of questions being displayed
+
+        :return: JSON-based list of questions and other properties related to the returned questions
+        '''
         page_num = request.args.get('page', 1, type=int)
 
         try:
@@ -96,46 +95,9 @@ def create_app(test_config=None):
                 'category': categories[current_category]
             })
 
-    '''
-    @TODO: 
-    Create an endpoint to DELETE question using a question ID. 
-  
-    TEST: When you click the trash icon next to a question, the question will be removed.
-    This removal will persist in the database and when you refresh the page. 
-    '''
-
-    @app.route('/questions/<question_id>', methods=['DELETE'])
-    def delete_question(question_id):
-        Question.query.filter(Question.id==question_id).delete()
-        db.session.commit()
-
-        return jsonify({
-            'success': True
-        })
-
-
-
-    '''
-    @TODO: 
-    Create an endpoint to POST a new question, 
-    which will require the question and answer text, 
-    category, and difficulty score.
-  
-    TEST: When you submit a question on the "Add" tab, 
-    the form will clear and the question will appear at the end of the last page
-    of the questions list in the "List" tab.  
-    '''
-    @app.route('/addquestion', methods=['POST'])
+    @app.route('/add_question', methods=['POST'])
     def add_new_question():
         json_data = request.get_json()
-
-        # # we have a text category, need the id of the category to set the question's category as an int
-        # categories = Category.query.filter(Category.type == json_data['category']).one_or_none()
-        #
-        # # the interface doesn't provide a way to warn that the category doesn't exist, so just assign it
-        # for category in categories:
-        #     if category.type == json_data['category']:
-        #         category_id = category.id
 
         new_question = Question(
                 question=json_data['question'],
@@ -144,23 +106,35 @@ def create_app(test_config=None):
                 category=int(json_data['category']) + 1
         )
 
-        db.session.add(new_question)
-        db.session.commit()
+        try:
+            db.session.add(new_question)
+            db.session.commit()
+        except SQLAlchemyError:
+            abort(500)
+
+        return jsonify({
+            'success': True,
+            'id': new_question.id
+        })
+
+    @app.route('/questions/<question_id>', methods=['DELETE'])
+    def delete_question(question_id):
+        ''' Deletes a specified question from the database
+
+        :param question_id: The DB id of the question to be deleted
+        :return: JSON-based success message
+        '''
+        try:
+            question_id = int(question_id)
+            Question.query.filter_by(id=question_id).delete()
+            db.session.commit()
+        except:
+            abort(500)
 
         return jsonify({
             'success': True
         })
 
-    '''
-    @TODO: 
-    Create a POST endpoint to get questions based on a search term. 
-    It should return any questions for whom the search term 
-    is a substring of the question. 
-  
-    TEST: Search by any phrase. The questions list will update to include 
-    only question that include that string within their question. 
-    Try using the word "title" to start. 
-    '''
     @app.route('/questions', methods=['POST'])
     def search_questions():
         json_data = request.get_json()
@@ -172,7 +146,13 @@ def create_app(test_config=None):
         question_list = []
 
         for question in question_matches:
-            question_list.append({'question':question.question})
+            question_list.append({
+                'id': question.id,
+                'question': question.question,
+                'answer': question.answer,
+                'category': question.category,
+                'difficulty': question.difficulty
+            })
 
         # NOTE: we return None for category per https://knowledge.udacity.com/questions/645582
         return jsonify({
@@ -182,24 +162,11 @@ def create_app(test_config=None):
             'category': None
         })
 
-    '''
-    @TODO: 
-    Create a GET endpoint to get questions based on category. 
-  
-    TEST: In the "List" tab / main screen, clicking on one of the 
-    categories in the left column will cause only questions of that 
-    category to be shown. 
-    '''
     @app.route('/categories/<int:id>/questions', methods=['GET'])
     def get_questions_by_category(id):
-
         # NOTE: we don't paginate questions when displayed by category
-
         # because the id is sent by the user clicking an existing category, we assume it exists
         questions = Question.query.filter(Question.category == id).all()
-
-        # apparently this is wrong, they want a list of dicts returned for 'questions', try below
-        # questions_list = [question.question for question in questions]
 
         questions_list = []
 
@@ -222,18 +189,6 @@ def create_app(test_config=None):
             'current_category': current_category
         })
 
-
-    '''
-    @TODO: 
-    Create a POST endpoint to get questions to play the quiz. 
-    This endpoint should take category and previous question parameters 
-    and return a random questions within the given category, 
-    if provided, and that is not one of the previous questions. 
-  
-    TEST: In the "Play" tab, after a user selects "All" or a category,
-    one question at a time is displayed, the user is allowed to answer
-    and shown whether they were correct or not. 
-    '''
     @app.route('/quizzes', methods=['POST'])
     def get_quiz_questions():
         json_data = request.get_json()
@@ -256,6 +211,9 @@ def create_app(test_config=None):
                 questions = Question.query.filter(Question.category == category_id).order_by(Question.id).all()
             except SQLAlchemyError:
                 abort(500)
+
+        # randomize questions
+        random.shuffle(questions)
 
         question_to_return = None
         for question in questions:
@@ -280,14 +238,10 @@ def create_app(test_config=None):
             'question': question_dict
         })
 
-    '''
-    @TODO: 
-    Create error handlers for all expected errors 
-    including 404 and 422. 
-    '''
-    '''
-    
-    '''
+    @app.errorhandler(werkzeug.exceptions.BadRequest)
+    def handle_bad_request(e):
+        return 'bad request!', 400
+
     @app.errorhandler(404)
     def not_found(error):
         return jsonify({
@@ -296,9 +250,6 @@ def create_app(test_config=None):
             "message": "unprocessable"
         }), 404
 
-    '''
-    
-    '''
     @app.errorhandler(422)
     def unprocessable(error):
         return jsonify({

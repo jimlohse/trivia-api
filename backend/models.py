@@ -2,9 +2,20 @@ import os
 from sqlalchemy import Column, String, Integer, create_engine
 from flask_sqlalchemy import SQLAlchemy
 import json
+import sys
+import os
 
-database_name = "trivia"
-database_path = "postgres://{}:{}@{}/{}".format('postgres','postgres','localhost:5432', database_name)
+db_username = os.environ["DB_USERNAME"]
+db_password = os.environ["DB_PASSWORD"]
+db_host = os.environ["DB_HOST"]
+
+# from https://stackoverflow.com/a/63742743/3255525, check if unittest is running, use test db if so
+if 'unittest' in sys.modules.keys():
+    database_name = os.environ["DB_TEST"]
+else:
+    database_name = os.environ["DB_NAME"]
+
+database_path = "postgresql://{}:{}@{}/{}".format(db_username, db_password, db_host, database_name)
 
 db = SQLAlchemy()
 
