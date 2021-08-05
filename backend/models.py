@@ -5,7 +5,7 @@ import json
 import sys
 import os
 
-db_username = os.environ["DB_USERNAME"]
+db_username = os.environ['DB_USERNAME']
 db_password = os.environ["DB_PASSWORD"]
 db_host = os.environ["DB_HOST"]
 

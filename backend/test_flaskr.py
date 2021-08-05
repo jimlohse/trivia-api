@@ -101,7 +101,7 @@ class TriviaTestCase(unittest.TestCase):
                              "How many paintings did Van Gogh sell in his lifetime?")
 
     def test_search_post_questions_when(self):
-        ''' Tests for a positive search term 'how' that returns one question
+        ''' Tests for a negative search term 'when' that returns no questions
 
         '''
         # inspired by https://stackoverflow.com/questions/44892061/flask-unittest-for-post-method
@@ -118,7 +118,9 @@ class TriviaTestCase(unittest.TestCase):
             self.assertEqual(len(data['questions']), 0)
             self.assertEqual(data['questions'], [])
 
-    def test_questions_by_category(self):
+# *************** Testing getting questions by category
+
+    def test_questions_by_category_get(self):
         ''' Tests that /categories/<int:id>/questions returns a list of questions
 
         Specifically testing the Sports category that returns two questions
@@ -130,15 +132,29 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(data['questions'][0]['question'],
                          "Which is the only team to play in every soccer World Cup tournament?")
 
+    def test_questions_by_category_negative_case(self):
+        ''' Tests that a bad request to /categories/<int:id>/questions returns an error
+
+        *** ADDED after first review, was asking for 4 more tests and fixing broken test, which is done
+        Checking that a POST request to this URL fails
+        '''
+        result = self.client().post('/categories/6/questions')
+        data = json.loads(result.data)
+
+        self.assertEqual(data['error'], 405)
+
+# **************** Testing playing the game, both positive and negative
     def test_quizzes_post_play_game(self):
-        ''' Tests that initially playing the game returns a question
+        ''' Tests /quizzes with POST that initially playing the game returns a question
 
         '''
         # inspired by https://stackoverflow.com/questions/44892061/flask-unittest-for-post-method
         with self.app.test_client() as client:
             to_send = {
                 'previous_questions': [],
-                'quiz_category': "5"
+                'quiz_category': {
+                    "id": "5",
+                    'type': 'Science'}
             }
             result = client.post(
                 '/quizzes',
@@ -146,14 +162,25 @@ class TriviaTestCase(unittest.TestCase):
             )
             data = json.loads(result.data)
 
-            self.assertEqual(data['question']['question'],
-                             "Which is the only team to play in every soccer World Cup tournament?")
+            # using assertIn because the Sports category has two questions and because they are randomized, it might be
+            # either one. So we look at the question that is returned and see if it's in a string that contains both.
+            self.assertIn(data['question']['question'],
+                             "Which country won the first ever soccer World Cup in 1930?, Which is the only team to play in every soccer World Cup tournament?")
 
+    def test_quizzes_play_with_wrong_request_type(self):
+        ''' Tests whether a GET request to /quizzes fails
 
+        *** ADDED after first review, was asking for 4 more tests and fixing broken test, which is done
+        '''
+
+        result = self.client().get('/quizzes')
+        data = json.loads(result.data)
+
+        self.assertFalse(data['success'])
 
     # ************** Database modifying TESTS last! **************
 
-    def test_add_question(self):
+    def test_add_delete_same_question(self):
         """Test that a question can be added
 
         """
@@ -192,6 +219,31 @@ class TriviaTestCase(unittest.TestCase):
             except SQLAlchemyError:
                 self.assertTrue(False)
 
+    def test_add_a_question_failure(self):
+        ''' Test that the wrong request type to adding a question fails
+
+        *** ADDED after first review, was asking for 4 more tests and fixing broken test, which is done
+        '''
+        result = self.client().get('/add-question')
+        data = json.loads(result.data)
+
+        self.assertFalse(data['success'])
+
+    def test_delete_non_existent_question(self):
+        """Test that a question that doesn't exist cannot be deleted
+
+        Try to delete question 10,000, which very likely doesn't exist in this toy app
+
+        *** ADDED after first review, was asking for 4 more tests and fixing broken test, which is done
+        """
+        # inspired by https://stackoverflow.com/questions/44892061/flask-unittest-for-post-method
+        with self.app.test_client() as client:
+            result = client.get(
+                '/questions/' + str(10000))
+
+        data = json.loads(result.data)
+
+        self.assertFalse(data['success'])
 
 # Make the tests conveniently executable
 if __name__ == "__main__":

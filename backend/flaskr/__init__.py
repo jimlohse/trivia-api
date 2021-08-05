@@ -125,16 +125,26 @@ def create_app(test_config=None):
         :param question_id: The DB id of the question to be deleted
         :return: JSON-based success message
         '''
-        try:
-            question_id = int(question_id)
-            Question.query.filter_by(id=question_id).delete()
-            db.session.commit()
-        except:
-            abort(500)
+        question_id = int(question_id)
 
-        return jsonify({
-            'success': True
-        })
+        # need to check if the delete actually worked, because you can run .delete() on a non-existing row
+        # and no error is thrown. But if we delete a question that doesn't exist, no exception is raised.
+        # Hence a try ... except block is only used for an actual SQLAlchemy error
+        # delete returns the number of rows deleted, so check if the number of deleted rows is zero
+        try:
+            affected_questions = Question.query.filter_by(id=question_id).delete()
+            if affected_questions == 0:
+                return jsonify({
+                    'success': False
+                })
+            else:
+                db.session.commit()
+                return jsonify({
+                    'success': True
+                })
+        except SQLAlchemyError:
+            # if there really is an error in SQLAlchemy
+            abort(500)
 
     @app.route('/questions', methods=['POST'])
     def search_questions():
@@ -211,6 +221,7 @@ def create_app(test_config=None):
         category = json_data['quiz_category']
         # need to add one to category, in the db they are 1-indexed, set category_id
         category_id = int(category['id']) + 1
+        # category_id = category + 1
 
         # look to find a question that hasn't been asked and return it as question_to_return
         # if category type is 'click', we look at all categories / all questions
@@ -265,6 +276,15 @@ def create_app(test_config=None):
             "error": 404,
             "message": "not found"
         }), 404
+
+    @app.errorhandler(405)
+    def bad_request_type(error):
+        ''' Handles 405 errors, indicating a bad request type was made'''
+        return jsonify({
+            "success": False,
+            "error": 405,
+            "message": "bad request type"
+        }), 405
 
     @app.errorhandler(422)
     def unprocessable(error):

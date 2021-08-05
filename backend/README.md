@@ -29,6 +29,23 @@ This will install all of the required packages from the `requirements.txt` file.
 
  - [Flask-CORS](https://flask-cors.readthedocs.io/en/latest/#) is the extension we'll use to handle cross origin requests from our frontend server. 
 
+### Environment Variables
+
+Certain environment variables must be setup:
+
+```bash
+FLASK_APP=flaskr
+FLASK_ENV=development
+```
+The following variables have sample values, you need to set these to match your local environment:
+```bash
+DB_PASSWORD=postgres
+DB_TEST=trivia_test
+DB_USERNAME=postgres
+DB_HOST=localhost:5432
+DB_NAME=trivia
+```
+
 ### Database Setup
 With Postgres running, restore a database using the trivia.psql file provided. From the backend folder in terminal run:
 ```bash
